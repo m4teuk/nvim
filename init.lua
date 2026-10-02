@@ -210,6 +210,8 @@ do
   }
 
   vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+  vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror message' })
+  vim.keymap.set('n', '<leader>w', '<cmd>w<CR>', { desc = '[W]rite buffer' })
 
   -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
   -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -233,6 +235,10 @@ do
   vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
   vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
   vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+
+  -- No-Ctrl alternative for horizontal window navigation (overrides default H/L "top/bottom of screen")
+  vim.keymap.set('n', '<S-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
+  vim.keymap.set('n', '<S-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
 
   -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
   -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
@@ -372,6 +378,7 @@ do
       { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
       { '<leader>t', group = '[T]oggle' },
       { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
+      { '<leader>g', group = '[G]it' },
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
     },
   }
@@ -643,6 +650,7 @@ do
       -- Execute a code action, usually your cursor needs to be on top of an error
       -- or a suggestion from your LSP for this to activate.
       map('gra', vim.lsp.buf.code_action, '[G]oto Code [A]ction', { 'n', 'x' })
+      map('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction', { 'n', 'x' })
 
       -- WARN: This is not Goto Definition, this is Goto Declaration.
       --  For example, in C this would take you to the header.
@@ -750,7 +758,7 @@ do
 
   -- Translates between nvim-lspconfig server names and mason.nvim package names (e.g. lua_ls <-> lua-language-server)
   require('mason-lspconfig').setup {
-    automatic_enable = false, -- Change this to true if you want to automatically enable servers that are installed manually (e.g. via :Mason / :MasonInstall)
+    automatic_enable = true, -- Enable any server installed via :Mason / :MasonInstall, so each machine only installs the languages it needs
   }
 
   -- Ensure the servers and tools above are installed
@@ -771,6 +779,18 @@ do
     vim.lsp.config(name, server)
     vim.lsp.enable(name)
   end
+
+  vim.pack.add {
+    gh 'windwp/nvim-autopairs',
+    gh 'kylechui/nvim-surround',
+    gh 'numToStr/Comment.nvim',
+    gh 'stevearc/oil.nvim',
+  }
+
+  require('nvim-autopairs').setup {}
+  require('nvim-surround').setup {}
+  require('Comment').setup {}
+  require('oil').setup {}
 end
 
 -- ============================================================
@@ -809,6 +829,35 @@ do
   }
 
   vim.keymap.set({ 'n', 'v' }, '<leader>f', function() require('conform').format { async = true } end, { desc = '[F]ormat buffer' })
+end
+
+-- ============================================================
+-- SECTION 7b: DIFFVIEW
+-- Review changes (working tree, staged, or against any ref) in a
+-- file-tree + diff UI, similar to reviewing a PR locally.
+-- ============================================================
+do
+  vim.pack.add { gh 'sindrets/diffview.nvim' }
+  local diffview_actions = require 'diffview.actions'
+  require('diffview').setup {
+    use_icons = vim.g.have_nerd_font,
+    keymaps = {
+      -- Default 'L' (open commit log) collides with our <S-l> window-nav mapping.
+      -- Free it up and expose the same action via 'gl' instead.
+      file_panel = {
+        { 'n', 'L', false },
+        { 'n', 'gl', diffview_actions.open_commit_log, { desc = 'Open the commit log panel' } },
+      },
+      file_history_panel = {
+        { 'n', 'L', false },
+        { 'n', 'gl', diffview_actions.open_commit_log, { desc = 'Show commit details' } },
+      },
+    },
+  }
+
+  vim.keymap.set('n', '<leader>gd', '<cmd>DiffviewOpen<CR>', { desc = '[G]it [D]iff view (review changes)' })
+  vim.keymap.set('n', '<leader>gh', '<cmd>DiffviewFileHistory %<CR>', { desc = '[G]it file [H]istory' })
+  vim.keymap.set('n', '<leader>gc', '<cmd>DiffviewClose<CR>', { desc = '[G]it diffview [C]lose' })
 end
 
 -- ============================================================
@@ -855,7 +904,7 @@ do
       -- <c-k>: Toggle signature help
       --
       -- See `:help blink-cmp-config-keymap` for defining your own keymap
-      preset = 'default',
+      preset = 'super-tab',
 
       -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
       --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
@@ -974,7 +1023,7 @@ do
   -- require 'kickstart.plugins.lint'
   -- require 'kickstart.plugins.autopairs'
   -- require 'kickstart.plugins.neo-tree'
-  -- require 'kickstart.plugins.gitsigns' -- adds gitsigns recommended keymaps
+  require 'kickstart.plugins.gitsigns' -- adds gitsigns recommended keymaps
 
   -- NOTE: You can add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --
@@ -984,3 +1033,5 @@ end
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
+
+vim.keymap.set('n', '-', '<CMD>Oil<CR>', { desc = 'Open parent directory' })
